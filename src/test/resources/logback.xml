@@ -1,10 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
     <!-- Generate unique timestamp for log file name -->
-    <timestamp key="bySecond" datePattern="yyyyMMdd'T'HHmmss"/>
-
-    <!-- Set default test suite name (used when running from IDE without -D parameter) -->
-    <property name="testSuite" value="default"/>
+    <timestamp key="bySecond" datePattern="yyyy-MM-dd_HH-mm-ss"/>
 
     <!-- Console appender with formatted output -->
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
@@ -13,10 +10,9 @@
         </encoder>
     </appender>
 
-    <!-- File appender with unique name: test suite + timestamp -->
+    <!-- File appender with unique name: test suite (system property testSuite, default "default") + timestamp -->
     <appender name="FILE" class="ch.qos.logback.core.FileAppender">
-        <file>target/test-logs/${testSuite}-${bySecond}.log</file>
-        <append>true</append>
+        <file>target/test-logs/${testSuite:-default}-${bySecond}.log</file>
         <encoder>
             <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
         </encoder>
