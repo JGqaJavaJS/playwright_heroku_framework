@@ -1,3 +1,5 @@
+src/test/resources/secrets.properties
+
 # Compiled class files
 target/
 
