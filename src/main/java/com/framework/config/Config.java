@@ -14,8 +14,8 @@ import java.util.Properties;
  */
 public class Config {
 
-    private static final Config INSTANCE = new Config();
     private static final Logger logger = LoggerFactory.getLogger(Config.class);
+    private static final Config INSTANCE = new Config();
 
     // Required properties loaded and validated at startup
     private final String baseUrl;

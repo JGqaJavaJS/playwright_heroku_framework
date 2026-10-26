@@ -64,19 +64,19 @@ public abstract class BasePage {
      */
     protected String getText(Locator locator) {
         logger.info("Getting text from element: {}", locator);
+        waitForVisible(locator);
         String text = locator.textContent();
         logger.debug("Retrieved text: {}", text);
         return text;
     }
 
     /**
-     * Checks if element is displayed, with built-in wait to prevent false negatives.
-     * Note: If the element does not become visible within the timeout,
-     * it will throw a TimeoutException (which is better for debugging than a silent 'false').
+     * Checks if element is visible.
+     * Playwright automatically waits for the element to be attached to the DOM before evaluating visibility.
+     * Returns true if visible, false otherwise (does not throw TimeoutException).
      */
     protected boolean isVisible(Locator locator) {
-        logger.debug("Checking if element is displayed (with wait): {}", locator);
-        waitForVisible(locator);
+        logger.debug("Checking if element is visible: {}", locator);
         return locator.isVisible();
     }
 
@@ -101,11 +101,14 @@ public abstract class BasePage {
     // ==================== NAVIGATION METHODS ====================
 
     /**
-     * Navigate to specific URL
+     * Navigate to a specific URL.
+     * If the URL already starts with "http", it is used as is.
+     * Otherwise, it is appended to the base URL.
      */
     protected void navigateTo(String url) {
-        logger.info("Navigating to URL: {}", url);
-        page.navigate(url);
+        String targetUrl = url.startsWith("http") ? url : Config.getInstance().getBaseUrl() + url;
+        logger.info("Navigating to URL: {}", targetUrl);
+        page.navigate(targetUrl);
     }
 
     /**
