@@ -265,26 +265,4 @@ public class BrowserManager {
         return pageStackThreadLocal.get().size();
     }
 
-    /**
-     * Navigate the currently active page to a specific URL.
-     */
-    public void navigateTo(String url) {
-        logger.info("Navigating to: {}", url);
-        getPage().navigate(url);
-    }
-
-    /**
-     * Navigate the currently active page to the base URL from configuration.
-     */
-    public void navigateToBaseUrl() {
-        navigateTo(config.getBaseUrl());
-    }
-
-    /**
-     * Take a screenshot of the currently active page.
-     */
-    public byte[] takeScreenshot() {
-        logger.debug("Taking screenshot of current page");
-        return getPage().screenshot();
-    }
 }
