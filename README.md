@@ -1,257 +1,143 @@
-# Playwright Heroku Framework
+# Playwright Java Test Framework
 
-## 🎯 Purpose
+Production-ready test automation framework built with Playwright, TestNG, and Maven.
+Features parallel test execution, thread-safe browser isolation, and comprehensive logging.
 
-This is a **framework demonstration project** built on Java 17 + Playwright + TestNG + Maven.
-The main goal is **not** to cover all pages of [The Internet Herokuapp](https://the-internet.herokuapp.com), 
-but to build a clean, scalable, and production-ready web test automation framework with:
+## 🏗️ Architecture
 
-- Solid architecture (Page Object Model, separation of concerns)
-- Thread-safe browser management (`ThreadLocal`)
-- Reusable element wrappers and components
-- CI/CD integration (GitHub Actions)
-- Reporting (Allure)
-- Logging (SLF4J + Logback)
-- Flexible configuration
-- Parallel test execution support
+### Project Structure
 
-Only a couple of sample tests are included to demonstrate the framework's capabilities.
+    src/
+    ├── main/
+    │   └── java/
+    │       └── com/framework/
+    │           ├── config/                    # Configuration management
+    │           │   ├── Config.java            # Main configuration (baseUrl, browser, headless)
+    │           │   ├── CredentialsConfig.java # User credentials from secrets.properties
+    │           │   └── UserCredentials.java   # User data object (DTO)
+    │           │
+    │           ├── core/
+    │           │   └── manager/
+    │           │       └── BrowserManager.java # Singleton managing Playwright, Browser, Context, Pages
+    │           │                               # Uses ThreadLocal for test isolation
+    │           │                               # Supports multiple tabs via page stack (Deque)
+    │           │
+    │           └── pages/
+    │               └── base/
+    │                   └── BasePage.java       # Abstract base class for all Page Objects
+    │                                           # Wraps Playwright Locator with logging and auto-waits
+    │                                           # Provides common methods: click, fill, isVisible, navigate, etc.
+    │
+    ├── test/
+    │   ├── java/
+    │   │   └── com/framework/
+    │   │       ├── tests/                     # Test classes (extend BaseTest)
+    │   │       │   ├── BaseTest.java          # Base class with @BeforeClass/@AfterClass hooks
+    │   │       │   ├── WindowsTest.java       # Tests new tab/popup handling
+    │   │       │   └── ...                    # Other test classes
+    │   │       │
+    │   │       └── pages/                     # Page Objects (extend BasePage)
+    │   │           ├── LoginPage.java
+    │   │           ├── WindowsPage.java
+    │   │           └── ...
+    │   │
+    │   └── resources/
+    │       ├── config.properties              # Main configuration (baseUrl, browser, headless)
+    │       ├── secrets.properties             # User credentials (gitignored)
+    │       ├── testng.xml                     # TestNG suite configuration
+    │       └── logback.xml                    # Logging configuration
+    │
+    └── .github/
+        └── workflows/
+            └── playwright-tests.yml           # GitHub Actions CI/CD
 
----
+### Key Features
 
-## 🛠 Tech Stack
+#### 1. Thread-Safe Parallel Execution
+- **Shared Browser**: Single browser instance for all tests (saves RAM and startup time)
+- **Isolated Contexts**: Each test gets its own BrowserContext (like incognito mode) via ThreadLocal
+- **Page Stack**: Supports multiple tabs per test using Deque<Page> in ThreadLocal
+- **Auto-tracking**: New tabs/popups automatically added to stack via page.onPopup()
 
-| Layer              | Technology                          |
-|--------------------|-------------------------------------|
-| Language           | Java 17                             |
-| Automation         | Playwright (Microsoft)              |
-| Test Runner        | TestNG                              |
-| Build Tool         | Maven                               |
-| Reporting          | Allure                              |
-| Logging            | SLF4J + Logback                     |
-| CI/CD              | GitHub Actions *(planned)*          |
+#### 2. Configuration Management
+- **config.properties**: Non-sensitive settings (baseUrl, browser type, headless mode)
+- **secrets.properties**: Credentials (gitignored, never committed)
+- **System properties override**: Pass -Dbrowser=firefox -Dheadless=true to override config
+- **Fail-fast validation**: Invalid browser value throws exception immediately
 
----
+#### 3. Page Object Pattern
+- **BasePage**: Wraps Playwright Locator with logging and built-in waits
+- **Auto-waits**: click() and fill() automatically wait for element to be ready
+- **No manual sleeps**: Leverages Playwright's native auto-waiting (no Thread.sleep)
+- **Flexible constructors**: Default constructor uses current thread's page, parameterized constructor for specific pages
 
-## 📁 Project Structure
+#### 4. Logging & Reporting
+- **SLF4J + Logback**: Structured logging with dynamic log file names per test suite
+- **Action logging**: Every click, fill, navigation logged automatically
+- **Thread-aware logs**: Each thread's actions clearly marked in logs
 
-```
-playwright_heroku_framework/
-├── src/
-│   ├── main/java/
-│   │   └── com/framework/
-│   │       ├── config/              # Configuration reader (Singleton)
-│   │       │
-│   │       ├── dto/                 # Data transfer objects (UserCredentials)
-│   │       │
-│   │       ├── core/                # Core infrastructure
-│   │       │   ├── manager/         # BrowserManager (ThreadLocal for parallel execution)
-│   │       │   ├── factory/         # PageFactory (creates and caches page instances per thread)
-│   │       │   └── wrappers/        # ElementWrapper (wraps Locator with logging and waits)
-│   │       │
-│   │       ├── pages/               # Page Objects
-│   │       │   ├── base/            # BasePage (abstract class with common methods)
-│   │       │   └── [page_name]/     # Concrete page classes
-│   │       │
-│   │       ├── components/          # Reusable UI components (header, footer, menu)
-│   │       │
-│   │       ├── utils/               # Utilities (waiters, assertions, screenshots)
-│   │       │
-│   │       └── listeners/           # Test listeners (Allure, logging, screenshot on failure)
-│   │
-│   ├── test/java/
-│   │   └── com/tests/
-│   │       ├── base/                # BaseTest (lifecycle hooks)
-│   │       ├── smoke/               # Smoke test suite
-│   │       └── regression/          # Regression test suite
-│   │
-│   └── test/resources/
-│       ├── config.properties        # Runtime configuration
-│       ├── logback.xml              # Logger configuration
-│       └── META-INF/services/       # TestNG listener auto-registration
-│           └── org.testng.ITestNGListener
-│
-├── pom.xml
-├── .gitignore
-└── README.md
-```
+## 🚀 Quick Start
 
-### Key Components Explained:
-
-**1. Core Layer** (`com/framework/core/`)
-Infrastructure that powers the framework:
-- **`manager/`** — `BrowserManager` manages Playwright instance and browser lifecycle using ThreadLocal
-- **`factory/`** — `PageFactory` creates page instances and caches them per thread
-- **`wrappers/`** — `ElementWrapper` wraps Playwright `Locator` with enhanced methods (click, type, wait) 
-- and human-readable logging
-
-**2. Pages Layer** (`com/framework/pages/`)
-Page Object Model implementation:
-- **`base/`** — `BasePage` abstract class with common page methods (navigation, waits, assertions)
-- **`[page_name]/`** — Concrete page classes extending `BasePage`
-
-**3. Components Layer** (`com/framework/components/`)
-Reusable UI components that appear on multiple pages:
-- Header, Footer, Navigation Menu
-- Each component has its own class with element locators and actions
-
-**4. Utils Layer** (`com/framework/utils/`)
-Helper utilities:
-- `WaitUtils` — custom wait conditions
-- `AssertUtils` — assertions with logging
-- `ScreenshotUtils` — screenshot capture and Allure attachments
-
-**5. Listeners Layer** (`com/framework/listeners/`)
-Test execution listeners:
-- Allure integration
-- Logging
-- Screenshot on test failure
-
-**6. Credentials Layer** (`com/framework/config/` and `com/framework/dto/`)
-Manages sensitive test data separately from regular configuration:
-- `CredentialsConfig` — reads `secrets.properties` and provides user credentials
-- `UserCredentials` — DTO that holds arbitrary credential fields per user
-- Sensitive values are never logged
-- The active user is selected via the `current.user` property
-
----
-
-## ⚙️ Configuration
-
-All runtime settings are stored in `src/test/resources/config.properties`:
-
-```properties
-# Base URL for testing
-baseUrl=https://the-internet.herokuapp.com
-
-# Browser type: chromium, firefox, webkit
-browser=chromium
-
-# Run browser in headless mode (true/false)
-headless=false
-```
-
-### Override via System Properties
-
-Any property can be overridden at runtime via `-D` flag. Priority order:
-
-1. System property (`-Dbrowser=firefox`)
-2. `config.properties` file
-Default values are defined in `config.properties`. They are used when no system property is provided.
-The `browser` property is validated against allowed values: `chromium`, `firefox`, `webkit`. 
-An invalid value causes the test run to fail immediately.
-
-
-Example:
-```bash
-mvn clean test -Dbrowser=firefox -Dheadless=true
-```
-
-### Sensitive Data
-
-Credentials and other sensitive test data are stored separately in `src/test/resources/secrets.properties`. This file should be added to `.gitignore` and never committed.
-
-Example `secrets.properties`:
-```properties
-user.vasya.email=vasya@example.com
-user.vasya.password=SuperSecretPassword
-user.vasya.id=12345
-
-user.petya.email=petya@example.com
-user.petya.password=AnotherSecret
-user.petya.id=67890
----
-
-## 🚀 Running Tests
-
-### Local run (default settings)
-```bash
-mvn clean test
-```
-
-### With custom test suite name (affects log file name)
-```bash
-mvn clean test -DtestSuite=smoke
-mvn clean test -DtestSuite=regression
-```
-
-### Override configuration at runtime
-```bash
-mvn clean test -Dbrowser=firefox -Dheadless=true -DtestSuite=smoke
-```
-
-### Run only smoke tests
-```bash
-mvn clean test -Dtest=com.tests.smoke.*
-```
-
-Log files will be generated in `target/test-logs/` with names like:
-- `smoke-2024-01-15_14-30-22.log`
-- `regression-2024-01-15_14-30-22.log`
-- `default-2024-01-15_14-30-22.log` *(if `-DtestSuite` is not provided)*
-
----
-
-## 📝 Logging
-
-- **Console output** — formatted with timestamp, thread, level, and logger name
-- **File output** — unique log file per run (timestamp + test suite name)
-- Log files location: `target/test-logs/`
-- Configuration: `src/test/resources/logback.xml`
-
----
-
-## 📊 Reporting
-
-Allure reporting is configured:
-- Screenshots on failure
-- Test steps with attachments
-- Environment info
-- GitHub Actions artifact upload *(planned)*
-
-### Generate and view report locally
-
-1. Run tests to produce Allure results:
-   ```bash
-   mvn clean test
-   ```
-
-2. Generate report and open it in browser:
-   ```bash
-   mvn allure:serve
-   ```
-
-### Generate static report (for CI/CD)
-
-```bash
-mvn allure:report
-```
-
-The static HTML report will be generated in `target/site/allure-maven-plugin/`.
-```
-
----
-
-## 🔄 CI/CD (Planned)
-
-GitHub Actions pipeline will include:
-- Headless mode by default
-- Allure report generation and publishing
-- Log file artifacts
-
----
-
-## 📋 Requirements
-
+### Prerequisites
 - Java 17+
 - Maven 3.6+
-- Playwright browsers (installed via):
-  ```bash
-  mvn exec:java -e -Dexec.mainClass=com.microsoft.playwright.CLI -Dexec.args="install"
-  ```
 
----
+### Installation
 
-## 👤 Author
+    git clone <repository-url>
+    cd playwright-heroku-framework
+    mvn clean install
 
-Built as a framework demo project.
+### Run Tests
+
+    # Run all tests (4 threads, headless)
+    mvn test -Dthreads=4 -Dheadless=true
+
+    # Run specific test class
+    mvn test -Dtest=WindowsTest
+
+    # Override browser
+    mvn test -Dbrowser=firefox -Dheadless=false
+
+## 📋 Configuration
+
+### config.properties
+
+    baseUrl=https://the-internet.herokuapp.com
+    browser=chromium
+    headless=true
+
+### secrets.properties (gitignored)
+
+    user.vasya.email=vasya@example.com
+    user.vasya.password=secret123
+
+## 🔄 Test Lifecycle
+
+1. **@BeforeSuite**: Initialize shared Playwright and Browser (once)
+2. **@BeforeClass**: Create isolated BrowserContext and first Page for test class
+3. **@Test**: Execute test (can open multiple tabs, all tracked in stack)
+4. **@AfterClass**: Close all pages, context, clear ThreadLocal
+5. **@AfterSuite**: Close shared browser and Playwright engine
+
+## 🎯 Planned Enhancements
+
+- **Components**: Reusable UI components (header, footer, menu) - architecture placeholder
+- **Utils**: Additional utilities (advanced waiters, custom assertions) - architecture placeholder
+- **Allure Reports**: Rich test reporting with screenshots on failure
+- **API Testing**: Extend framework to support REST API tests alongside UI tests
+
+## 📦 Dependencies
+
+- **Playwright**: Browser automation
+- **TestNG**: Test runner with parallel execution
+- **SLF4J + Logback**: Logging
+- **Maven Surefire**: Test execution plugin
+
+## 🔧 CI/CD
+
+GitHub Actions workflow runs tests on every push:
+- Installs Java 17
+- Caches Maven dependencies
+- Installs Playwright browsers
+- Runs tests in headless mode with 4 threads
