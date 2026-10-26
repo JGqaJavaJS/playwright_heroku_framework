@@ -20,7 +20,7 @@
         <logback.version>1.5.18</logback.version>
 
         <!-- Run parameter: mvn test -Dthreads=2 -->
-        <threads>4</threads>
+        <threads>2</threads>
     </properties>
 
     <dependencyManagement>
@@ -83,7 +83,7 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.5.3</version>
                 <configuration>
-                    <parallel>methods</parallel>
+                    <parallel>classes</parallel>
                     <threadCount>${threads}</threadCount>
                     <perCoreThreadCount>false</perCoreThreadCount>
                     <argLine>
