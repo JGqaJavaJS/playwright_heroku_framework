@@ -71,6 +71,19 @@ public abstract class BasePage {
     }
 
     /**
+     * Gets the current value of an input, textarea, or select element.
+     *
+     * @param locator The locator of the input element.
+     * @return The current string value of the input field.
+     */
+    protected String getInputValue(Locator locator) {
+        logger.info("Getting input value from element: {}", locator);
+        String value = locator.inputValue();
+        logger.debug("Retrieved input value: '{}'", value);
+        return value;
+    }
+
+    /**
      * Checks if element is visible.
      * Playwright automatically waits for the element to be attached to the DOM before evaluating visibility.
      * Returns true if visible, false otherwise (does not throw TimeoutException).
