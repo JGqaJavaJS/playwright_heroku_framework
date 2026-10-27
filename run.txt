@@ -1,0 +1,9 @@
+bash
+
+mvn clean test
+
+or
+
+bash
+
+mvn clean test -Dthreads=2

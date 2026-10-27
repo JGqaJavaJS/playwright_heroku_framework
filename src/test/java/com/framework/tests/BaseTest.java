@@ -6,19 +6,31 @@ import org.slf4j.LoggerFactory;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.AfterSuite;
 import org.testng.annotations.BeforeClass;
+import org.testng.annotations.BeforeSuite;
 
 /**
  * Base class for all TestNG test classes.
- * Manages the test lifecycle by setting up and tearing down the isolated
- * browser environment for each test class.
+ * Manages the lifecycle of the browser environment using TestNG annotations.
  */
 public abstract class BaseTest {
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
 
     /**
+     * Executes ONCE before any test in the suite.
+     * Initializes the shared Playwright engine and Browser instance on the MAIN thread.
+     */
+    @BeforeSuite(alwaysRun = true)
+    public void setUpSuite() {
+        logger.info("=== Initializing Shared Browser (Suite Level) ===");
+        BrowserManager.getManager().initSharedBrowser();
+    }
+
+    /**
      * Executes before the first test method in the current class.
-     * Initializes an isolated BrowserContext and a fresh Page stack for this thread.
+     * Sets up a fresh Page stack. Reuses the existing BrowserContext for this thread
+     * to prevent Playwright driver race conditions, but clears cookies/storage
+     * to ensure complete isolation between test classes.
      */
     @BeforeClass
     public void setUpClass() {
@@ -28,8 +40,9 @@ public abstract class BaseTest {
 
     /**
      * Executes after the last test method in the current class.
-     * Closes all pages, the BrowserContext, and clears ThreadLocal storage.
-     * alwaysRun = true ensures cleanup even if the test fails.
+     * Closes all Pages created during this class, but intentionally keeps the
+     * BrowserContext alive for the next class on this thread.
+     * This avoids rapid close/open driver bugs.
      */
     @AfterClass(alwaysRun = true)
     public void tearDownClass() {
@@ -39,8 +52,8 @@ public abstract class BaseTest {
 
     /**
      * Executes once after all tests in the suite have finished.
-     * Closes the shared Browser and Playwright instances to free up system resources.
-     * alwaysRun = true ensures global cleanup at the end of the run.
+     * Closes the shared Browser and Playwright instances.
+     * This will also cleanly close any remaining BrowserContexts automatically.
      */
     @AfterSuite(alwaysRun = true)
     public void tearDownSuite() {
