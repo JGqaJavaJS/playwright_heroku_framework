@@ -7,3 +7,11 @@ or
 bash
 
 mvn clean test -Dthreads=2
+
+generate allure report
+
+mvn allure:serve
+
+mvn clean test -Dmaven.test.failure.ignore=true allure:report
+
+playwright_heroku_framework/target/site/allure-maven-plugin/index.html

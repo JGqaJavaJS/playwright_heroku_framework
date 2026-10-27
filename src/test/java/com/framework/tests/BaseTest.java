@@ -1,16 +1,15 @@
 package com.framework.tests;
 
 import com.framework.core.manager.BrowserManager;
+import com.framework.pages.base.BasePage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.AfterSuite;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.BeforeSuite;
+import org.testng.ITestResult;
+import org.testng.annotations.*;
 
 /**
  * Base class for all TestNG test classes.
- * Manages the lifecycle of the browser environment using TestNG annotations.
+ * Manages the lifecycle of the thread-isolated browser environment and Allure reporting.
  */
 public abstract class BaseTest {
 
@@ -18,19 +17,17 @@ public abstract class BaseTest {
 
     /**
      * Executes ONCE before any test in the suite.
-     * Initializes the shared Playwright engine and Browser instance on the MAIN thread.
+     * Legacy hook kept for structural consistency. Actual initialization is per-thread.
      */
     @BeforeSuite(alwaysRun = true)
     public void setUpSuite() {
-        logger.info("=== Initializing Shared Browser (Suite Level) ===");
+        logger.info("=== Initializing Suite Level Hooks ===");
         BrowserManager.getManager().initSharedBrowser();
     }
 
     /**
      * Executes before the first test method in the current class.
-     * Sets up a fresh Page stack. Reuses the existing BrowserContext for this thread
-     * to prevent Playwright driver race conditions, but clears cookies/storage
-     * to ensure complete isolation between test classes.
+     * Sets up an isolated Playwright, Browser, Context, and Page stack for the current thread.
      */
     @BeforeClass
     public void setUpClass() {
@@ -40,9 +37,8 @@ public abstract class BaseTest {
 
     /**
      * Executes after the last test method in the current class.
-     * Closes all Pages created during this class, but intentionally keeps the
-     * BrowserContext alive for the next class on this thread.
-     * This avoids rapid close/open driver bugs.
+     * Tears down and closes all resources (Page, Context, Browser, Playwright)
+     * for the current thread to prevent memory leaks and driver race conditions.
      */
     @AfterClass(alwaysRun = true)
     public void tearDownClass() {
@@ -52,12 +48,24 @@ public abstract class BaseTest {
 
     /**
      * Executes once after all tests in the suite have finished.
-     * Closes the shared Browser and Playwright instances.
-     * This will also cleanly close any remaining BrowserContexts automatically.
+     * Legacy hook kept for structural consistency. Actual cleanup is per-thread.
      */
     @AfterSuite(alwaysRun = true)
     public void tearDownSuite() {
         logger.info("=== Test Suite Finished. Closing shared browser resources ===");
         BrowserManager.getManager().closeSharedBrowser();
     }
+
+    /**
+     * Automatically captures and attaches a screenshot to Allure if the test fails.
+     * Delegates all screenshot logic (naming, timestamping, saving) to BasePage.
+     */
+    @AfterMethod(alwaysRun = true)
+    public void tearDownMethod(ITestResult result) {
+        if (result.getStatus() == ITestResult.FAILURE) {
+            logger.warn("Test FAILED: {}. Capturing screenshot for Allure report.", result.getName());
+            BasePage.attachFailureScreenshot(result);
+        }
+    }
+
 }

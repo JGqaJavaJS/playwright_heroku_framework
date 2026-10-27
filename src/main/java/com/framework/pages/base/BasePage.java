@@ -13,7 +13,7 @@ import org.slf4j.LoggerFactory;
  * Provides common methods for interacting with web elements with built-in waits and logging.
  */
 public abstract class BasePage {
-    protected final Logger logger = LoggerFactory.getLogger(getClass());
+    protected static final Logger logger = LoggerFactory.getLogger(BasePage.class);
     protected final Page page;
 
     // Constructor that gets the current Page from BrowserManager
@@ -154,11 +154,50 @@ public abstract class BasePage {
     // ==================== UTILITY METHODS ====================
 
     /**
-     * Take screenshot of current page
+     * Takes a screenshot of the current page and returns it as a byte array.
+     * Can be called manually from tests for custom handling.
+     *
+     * @return byte array of the screenshot image (PNG format).
      */
-    protected byte[] takeScreenshot() {
-        logger.info("Taking screenshot");
+    public byte[] takeScreenshot() {
+        logger.info("Taking screenshot of current page");
         return page.screenshot();
+    }
+
+    /**
+     * Captures a screenshot, generates a unique human-readable filename with timestamp,
+     * and attaches it to the Allure report.
+     * Static method to be called from BaseTest @AfterMethod without needing a Page Object instance.
+     *
+     * @param result The TestNG ITestResult containing test class and method names.
+     */
+    public static void attachFailureScreenshot(org.testng.ITestResult result) {
+        try {
+            Page page = BrowserManager.getManager().getPage();
+            if (page != null && !page.isClosed()) {
+                // Generate human-readable, unique filename: ClassName_MethodName_YYYY-MM-DD_HH-mm-ss
+                String timestamp = java.time.LocalDateTime.now()
+                        .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss"));
+                String className = result.getTestClass().getRealClass().getSimpleName();
+                String methodName = result.getName();
+                String screenshotName = className + "_" + methodName + "_" + timestamp;
+
+                logger.info("Capturing failure screenshot: {}", screenshotName);
+                byte[] screenshotBytes = page.screenshot();
+
+                // Attach to Allure with explicit PNG extension
+                io.qameta.allure.Allure.addAttachment(
+                        screenshotName,
+                        "image/png",
+                        new java.io.ByteArrayInputStream(screenshotBytes),
+                        "png"
+                );
+            } else {
+                logger.warn("Cannot capture screenshot: page is null or closed.");
+            }
+        } catch (Exception e) {
+            logger.error("Failed to capture screenshot: {}", e.getMessage(), e);
+        }
     }
 
     /**
