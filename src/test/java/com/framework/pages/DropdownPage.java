@@ -28,7 +28,6 @@ public class DropdownPage extends BasePage {
      */
     public String getSelectedValue() {
         logger.info("Getting selected value from dropdown");
-        // Находим выбранную опцию внутри селекта и берем её значение (value атрибут)
         return dropdown.locator("option:checked").getAttribute("value");
     }
 }
