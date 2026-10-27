@@ -18,8 +18,8 @@ Features parallel test execution, thread-safe browser isolation, and comprehensi
     │           │
     │           ├── core/
     │           │   └── manager/
-    │           │       └── BrowserManager.java # Singleton managing Playwright, Browser, Context, Pages
-    │           │                               # Uses ThreadLocal for test isolation
+    │           │       └── BrowserManager.java # Manages thread-isolated Playwright, Browser, Context, and Pages
+    │           │                               # Ensures 100% parallel stability by avoiding shared browser race conditions
     │           │                               # Supports multiple tabs via page stack (Deque)
     │           │
     │           └── pages/
@@ -44,6 +44,7 @@ Features parallel test execution, thread-safe browser isolation, and comprehensi
     │   └── resources/
     │       ├── config.properties              # Main configuration (baseUrl, browser, headless)
     │       ├── secrets.properties             # User credentials (gitignored)
+    │       ├── allure.properties              # Allure report configuration (results directory)
     │       ├── testng.xml                     # TestNG suite configuration
     │       └── logback.xml                    # Logging configuration
     │
@@ -54,10 +55,11 @@ Features parallel test execution, thread-safe browser isolation, and comprehensi
 ### Key Features
 
 #### 1. Thread-Safe Parallel Execution
-- **Shared Browser**: Single browser instance for all tests (saves RAM and startup time)
-- **Isolated Contexts**: Each test gets its own BrowserContext (like incognito mode) via ThreadLocal
-- **Page Stack**: Supports multiple tabs per test using Deque<Page> in ThreadLocal
-- **Auto-tracking**: New tabs/popups automatically added to stack via page.onPopup()
+- **Thread-Isolated Engines**: Each parallel thread gets its own isolated Playwright and Browser instance. 
+- This completely prevents Node.js driver WebSocket race conditions and `Object doesn't exist` errors during parallel execution.
+- **Isolated Contexts**: Each test class gets its own BrowserContext (like incognito mode) via ThreadLocal.
+- **Page Stack**: Supports multiple tabs per test using `Deque<Page>` in ThreadLocal.
+- **Auto-tracking**: New tabs/popups are automatically added to the stack via `page.onPopup()`.
 
 #### 2. Configuration Management
 - **config.properties**: Non-sensitive settings (baseUrl, browser type, headless mode)
@@ -76,6 +78,11 @@ Features parallel test execution, thread-safe browser isolation, and comprehensi
 - **Action logging**: Every click, fill, navigation logged automatically
 - **Thread-aware logs**: Each thread's actions clearly marked in logs
 
+#### 5. Allure Reporting & Auto-Screenshots
+- **Rich HTML Reports**: Generated via `mvn allure:report` or `mvn allure:serve`.
+- **Smart Failure Screenshots**: Automatically captures and attaches screenshots on test failure.
+- **Descriptive Naming**: Screenshots are named dynamically (`ClassName_MethodName_YYYY-MM-DD_HH-mm-ss`) to prevent overwrites during parallel runs.
+
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -90,13 +97,19 @@ Features parallel test execution, thread-safe browser isolation, and comprehensi
 
 ### Run Tests
 
-    # Run all tests (4 threads, headless)
-    mvn test -Dthreads=4 -Dheadless=true
+    # Run all tests (parallel execution as configured in testng.xml)
+    mvn clean test
 
-    # Run specific test class
+    # Run all tests, ignore failures, and generate Allure HTML report
+    mvn clean test -Dmaven.test.failure.ignore=true allure:report
+
+    # Open the generated Allure report in the default browser
+    open target/site/allure-maven-plugin/index.html
+
+    # Run a specific test class
     mvn test -Dtest=WindowsTest
 
-    # Override browser
+    # Override browser and headless mode via system properties
     mvn test -Dbrowser=firefox -Dheadless=false
 
 ## 📋 Configuration
@@ -114,18 +127,11 @@ Features parallel test execution, thread-safe browser isolation, and comprehensi
 
 ## 🔄 Test Lifecycle
 
-1. **@BeforeSuite**: Initialize shared Playwright and Browser (once)
-2. **@BeforeClass**: Create isolated BrowserContext and first Page for test class
-3. **@Test**: Execute test (can open multiple tabs, all tracked in stack)
-4. **@AfterClass**: Close all pages, context, clear ThreadLocal
-5. **@AfterSuite**: Close shared browser and Playwright engine
-
-## 🎯 Planned Enhancements
-
-- **Components**: Reusable UI components (header, footer, menu) - architecture placeholder
-- **Utils**: Additional utilities (advanced waiters, custom assertions) - architecture placeholder
-- **Allure Reports**: Rich test reporting with screenshots on failure
-- **API Testing**: Extend framework to support REST API tests alongside UI tests
+1. **@BeforeSuite**: Initialize suite-level hooks (actual browser initialization is deferred to thread level).
+2. **@BeforeClass**: Create an isolated Playwright, Browser, BrowserContext, and first Page specifically for the current thread.
+3. **@Test**: Execute test (can open multiple tabs, all tracked in the thread's page stack).
+4. **@AfterMethod**: (If failed) Automatically capture and attach a timestamped screenshot to Allure.
+5. **@AfterClass**: Close all pages, context, browser, and Playwright instances for the current thread, then clear ThreadLocal storage to prevent memory leaks.
 
 ## 📦 Dependencies
 
